@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>疑云 - AI剧本杀</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            height: 100vh;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            padding: 15px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.2);
+        }
+        .header h1 { 
+            font-size: 20px; 
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .script-select {
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 10px 40px 10px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            transition: all 0.3s;
+        }
+        .script-select:hover {
+            background: rgba(255,255,255,0.25);
+            border-color: rgba(255,255,255,0.5);
+        }
+        .current-script {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.user { justify-content: flex-end; }
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+        }
+        .message.ai .message-content {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .message.user .message-content {
+            background: #4a90d9;
+        }
+        .character-name {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .voice-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            color: #4a90d9;
+            font-size: 11px;
+        }
+        .voice-bar {
+            width: 3px;
+            height: 12px;
+            background: #4a90d9;
+            animation: sound 0.5s infinite;
+        }
+        .voice-bar:nth-child(2) { animation-delay: 0.1s; }
+        .voice-bar:nth-child(3) { animation-delay: 0.2s; }
+        @keyframes sound {
+            0%, 100% { height: 8px; }
+            50% { height: 16px; }
+        }
+        .input-area {
+            padding: 15px 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+        }
+        .input-area input {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 25px;
+            outline: none;
+        }
+        .input-area button {
+            background: #4a90d9;
+            border: none;
+            color: #fff;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .voice-toggle {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .voice-toggle.active {
+            background: #4a90d9;
+            border-color: #4a90d9;
+        }
+        .loading {
+            text-align: center;
+            color: #888;
+            padding: 10px;
+            font-size: 14px;
+        }
+        .script-changed {
+            text-align: center;
+            color: #4a90d9;
+            padding: 10px;
+            font-size: 14px;
+            animation: fadeIn 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 疑云 - AI剧本杀</h1>
+            <select class="script-select" id="scriptSelect" onchange="changeScript()">
+                <option value="疑云">🏔️ 疑云（暴风雨夜别墅）</option>
+                <option value="消失的乘客">🚂 消失的乘客（列车密室）</option>
+                <option value="直播间">📱 直播间（网红死亡）</option>
+            </select>
+            <div class="current-script" id="currentScript">当前剧本：疑云 | AI语音已开启</div>
+        </div>
+        
+        <div class="chat-area" id="chatArea">
+            <div class="message ai">
+                <div class="message-content">
+                    <div class="character-name">系统</div>
+                    欢迎来到《疑云》。每位嫌疑人都有独特的说话风格：<br>
+                    🩺 <b>林医生</b>：冷静缓慢 | 📰 <b>苏记者</b>：锐利带刺<br>
+                    🚗 <b>周司机</b>：紧张急促 | 👨‍🍳 <b>陈厨师</b>：憨厚朴实<br><br>
+                    输入"问[角色名]：[问题]"开始调查！
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="输入你的问题..." onkeypress="if(event.key==='Enter')sendMessage()">
+            <button class="voice-toggle active" id="voiceToggle" onclick="toggleVoice()" title="语音开关">🔊</button>
+            <button onclick="sendMessage()">发送</button>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'app-请在这里填写你的API-Key';
+        const API_URL = 'https://api.dify.ai/v1/chat-messages';
+        
+        let conversationId = '';
+        let round = 1;
+        let voiceEnabled = true;
+        let currentScript = '疑云';
+        let isSpeaking = false;
+        
+        // 角色语音参数（语速、音调、风格）
+        const voiceStyles = {
+            '林医生': { rate: 0.82, pitch: 0.9, style: '冷静' },
+            '林博文': { rate: 0.82, pitch: 0.9, style: '冷静' },
+            '苏记者': { rate: 1.0, pitch: 1.08, style: '锐利' },
+            '苏晓薇': { rate: 1.0, pitch: 1.08, style: '锐利' },
+            '周司机': { rate: 1.15, pitch: 0.95, style: '紧张' },
+            '周大勇': { rate: 1.15, pitch: 0.95, style: '紧张' },
+            '陈厨师': { rate: 0.78, pitch: 0.88, style: '憨厚' },
+            '陈德贵': { rate: 0.78, pitch: 0.88, style: '憨厚' },
+            '张建国': { rate: 0.85, pitch: 0.85, style: '威严' },
+            '王雅婷': { rate: 0.95, pitch: 1.1, style: '优雅' },
+            '刘志强': { rate: 0.9, pitch: 0.9, style: '焦虑' },
+            '赵小满': { rate: 0.85, pitch: 1.0, style: '老实' },
+            '孙明哲': { rate: 0.9, pitch: 0.95, style: '精明' },
+            '李梦琪': { rate: 0.95, pitch: 1.05, style: '阴阳' },
+            '陈浩宇': { rate: 0.8, pitch: 0.85, style: '内向' },
+            '马金龙': { rate: 1.05, pitch: 0.9, style: '暴躁' },
+            '龙哥': { rate: 1.05, pitch: 0.9, style: '暴躁' }
+        };
+        
+        // 切换剧本
+        function changeScript() {
+            const select = document.getElementById('scriptSelect');
+            const newScript = select.value;
+            if (newScript === currentScript) return;
+            
+            currentScript = newScript;
+            document.getElementById('currentScript').textContent = 
+                `当前剧本：${newScript} | AI语音${voiceEnabled ? '已开启' : '已关闭'}`;
+            
+            // 清空对话，重置
+            document.getElementById('chatArea').innerHTML = '';
+            conversationId = '';
+            round = 1;
+            
+            const chatArea = document.getElementById('chatArea');
+            const noticeDiv = document.createElement('div');
+            noticeDiv.className = 'script-changed';
+            noticeDiv.textContent = `已切换至《${newScript}》`;
+            chatArea.appendChild(noticeDiv);
+            
+            // 开场白
+            setTimeout(() => {
+                const scripts = {
+                    '疑云': {
+                        text: '欢迎来到《疑云》。暴风雨夜，山顶别墅，富商赵总身亡。嫌疑人：林博文医生、苏晓薇记者、周大勇司机、陈德贵厨师。',
+                        voice: '欢迎来到疑云。暴风雨夜，山顶别墅，一位富商身亡。四位嫌疑人各怀秘密，等待你的调查。'
+                    },
+                    '消失的乘客': {
+                        text: '欢迎来到《消失的乘客》。平安夜，G1234次列车，富商李先生中毒身亡，门窗反锁。嫌疑人：张建国列车长、王雅婷秘书、刘志强乘警、赵小满服务员。',
+                        voice: '欢迎来到消失的乘客。平安夜，列车密室，一位富商中毒身亡。四位嫌疑人，谁是真凶？'
+                    },
+                    '直播间': {
+                        text: '欢迎来到《直播间》。网红主播小美直播时倒地身亡，百万观众目睹。嫌疑人：孙明哲总监、李梦琪化妆师、陈浩宇场控、马金龙榜一大哥。',
+                        voice: '欢迎来到直播间。百万观众目睹，网红主播离奇死亡。四位嫌疑人，谁在镜头前演戏？'
+                    }
+                };
+                
+                const intro = scripts[newScript];
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message ai';
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        <div class="character-name">系统</div>
+                        ${intro.text}<br><br>输入"问[角色名]：[问题]"开始调查！
+                    </div>
+                `;
+                chatArea.appendChild(messageDiv);
+                chatArea.scrollTop = chatArea.scrollHeight;
+                
+                if (voiceEnabled) {
+                    speak(intro.voice, '系统', { rate: 0.9, pitch: 1.0 });
+                }
+            }, 500);
+        }
+        
+        // 语音开关
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            const btn = document.getElementById('voiceToggle');
+            btn.textContent = voiceEnabled ? '🔊' : '🔇';
+            btn.classList.toggle('active', voiceEnabled);
+            document.getElementById('currentScript').textContent = 
+                `当前剧本：${currentScript} | AI语音${voiceEnabled ? '已开启' : '已关闭'}`;
+            
+            if (!voiceEnabled && isSpeaking) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+            }
+        }
+        
+        // 发送消息
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const query = input.value.trim();
+            if (!query) return;
+            
+            addMessage(query, 'user');
+            input.value = '';
+            
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.textContent = 'AI思考中...';
+            document.getElementById('chatArea').appendChild(loadingDiv);
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        inputs: {
+                            query: query,
+                            round: round,
+                            script_name: currentScript,
+                            current_speaker: ''
+                        },
+                        query: query,
+                        response_mode: 'blocking',
+                        conversation_id: conversationId,
+                        user: 'player-001'
+                    })
+                });
+                
+                const data = await response.json();
+                loadingDiv.remove();
+                
+                if (data.conversation_id) {
+                    conversationId = data.conversation_id;
+                }
+                
+                if (data.answer) {
+                    addMessage(data.answer, 'ai', true);
+                    if (voiceEnabled) {
+                        // 延迟一点，让文字先显示
+                        setTimeout(() => speak(data.answer), 300);
+                    }
+                }
+                
+                if (query === '继续') {
+                    round++;
+                }
+                
+            } catch (error) {
+                loadingDiv.remove();
+                addMessage('出错了，请重试', 'ai');
+            }
+        }
+        
+        // 添加消息
+        function addMessage(text, type, showVoiceIndicator = false) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            
+            if (type === 'ai' && text.includes('【')) {
+                const match = text.match(/【(.+?)】：(.+)/s);
+                if (match) {
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'character-name';
+                    
+                    if (showVoiceIndicator && voiceEnabled) {
+                        nameDiv.innerHTML = `
+                            ${match[1]} 
+                            <span class="voice-indicator" id="voice-${Date.now()}">
+                                <span class="voice-bar"></span>
+                                <span class="voice-bar"></span>
+                                <span class="voice-bar"></span>
+                                ${voiceStyles[match[1]]?.style || ''}
+                            </span>
+                        `;
+                    } else {
+                        nameDiv.textContent = match[1];
+                    }
+                    
+                    contentDiv.appendChild(nameDiv);
+                    contentDiv.appendChild(document.createTextNode(match[2]));
+                } else {
+                    contentDiv.innerHTML = text.replace(/\n/g, '<br>');
+                }
+            } else {
+                contentDiv.textContent = text;
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        
+        // 语音播报（带角色区分）
+        function speak(text, forcedName = null, forcedStyle = null) {
+            if (!('speechSynthesis' in window)) return;
+            
+            window.speechSynthesis.cancel();
+            
+            // 提取角色名和内容
+            let character = forcedName;
+            let content = text;
+            
+            const match = text.match(/【(.+?)】：(.+)/s);
+            if (match) {
+                character = character || match[1];
+                content = match[2];
+            }
+            
+            // 获取角色语音参数
+            let style = forcedStyle;
+            if (!style && character) {
+                // 尝试匹配角色名（全名或姓氏）
+                for (let name in voiceStyles) {
+                    if (character.includes(name)) {
+                        style = voiceStyles[name];
+                        break;
+                    }
+                }
+            }
+            
+            // 默认参数
+            const defaultStyle = { rate: 0.9, pitch: 1.0, style: '正常' };
+            const finalStyle = style || defaultStyle;
+            
+            // 构建语音文本（加语气提示）
+            let speakText = content;
+            if (character && character !== '系统') {
+                // 根据风格调整文本
+                if (finalStyle.style === '紧张') {
+                    // 加停顿模拟结巴
+                    speakText = content.replace(/([我你他])/g, '$1、').substring(0, 100);
+                } else if (finalStyle.style === '憨厚') {
+                    speakText = '呃，' + content;
+                }
+            }
+            
+            const utterance = new SpeechSynthesisUtterance(speakText);
+            utterance.lang = 'zh-CN';
+            utterance.rate = finalStyle.rate;
+            utterance.pitch = finalStyle.pitch;
+            
+            // 找合适的声音
+            const voices = window.speechSynthesis.getVoices();
+            const chineseVoice = voices.find(v => v.lang.includes('zh'));
+            if (chineseVoice) {
+                utterance.voice = chineseVoice;
+            }
+            
+            isSpeaking = true;
+            
+            utterance.onend = () => {
+                isSpeaking = false;
+            };
+            
+            utterance.onerror = () => {
+                isSpeaking = false;
+            };
+            
+            window.speechSynthesis.speak(utterance);
+        }
+        
+        // 预加载语音
+        if (window.speechSynthesis) {
+            window.speechSynthesis.getVoices();
+        }
+    </script>
+</body>
+</html>
