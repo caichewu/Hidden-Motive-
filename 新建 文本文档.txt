@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>疑云 - 剧本杀AI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: #12141a; color: #fff; min-height: 100vh; padding-bottom: 80px; }
+        .header {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: #1a1d24; padding: 16px 20px;
+            display: flex; align-items: center; justify-content: center;
+            border-bottom: 1px solid #2d323b; z-index: 999;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; color: #fff; }
+        .chat {
+            padding: 80px 20px 20px;
+            display: flex; flex-direction: column; gap: 16px;
+        }
+        .msg {
+            max-width: 80%; padding: 12px 16px; border-radius: 18px;
+            line-height: 1.6; font-size: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #3e63e6, #5a7ff5);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .bot {
+            align-self: flex-start;
+            background: #2d323b;
+            color: white;
+            border-bottom-left-radius: 4px;
+        }
+        .input-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #1a1d24; padding: 12px 20px; display: flex; gap: 8px;
+            border-top: 1px solid #2d323b;
+        }
+        input {
+            flex: 1; padding: 14px 16px; border-radius: 24px;
+            border: none; background: #2d323b; color: #fff; font-size: 16px;
+            outline: none;
+        }
+        button {
+            padding: 14px 20px; border-radius: 24px;
+            background: #3e63e6; color: white; border: none; font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>疑云 · 剧本杀AI</h1>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="input-bar">
+        <input id="msg" placeholder="向角色提问..." />
+        <button onclick="send()">发送</button>
+    </div>
+
+    <script>
+        // ==============================================
+        // 👇 👇 👇 在这里填你的Dify信息，只有这两行要改！
+        // ==============================================
+        const DIFY_API_URL = "https://api.dify.ai/v1";
+        const DIFY_API_KEY = "app-s1E1FMjnsaQ6vAiupjvhVJaI";
+        // ==============================================
+        // 👆 👆 👆 只有这里要改，其他代码别动！
+        // ==============================================
+
+        async function send() {
+            const input = document.getElementById("msg");
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = "";
+
+            addMsg(text, "user");
+
+            try {
+                const res = await fetch(DIFY_API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${DIFY_API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        inputs: {},
+                        query: text,
+                        response_mode: "blocking",
+                        user: "app_user_" + Date.now()
+                    })
+                });
+
+                if (!res.ok) throw new Error("API请求失败");
+                const data = await res.json();
+                const reply = data.answer || "抱歉，我暂时无法回答这个问题。";
+                addMsg(reply, "bot");
+            } catch (err) {
+                addMsg("网络异常，请检查API配置后重试。", "bot");
+                console.error(err);
+            }
+        }
+
+        function addMsg(text, role) {
+            const div = document.createElement("div");
+            div.className = `msg ${role}`;
+            div.innerText = text;
+            document.getElementById("chat").appendChild(div);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        // 回车发送
+        document.getElementById("msg").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") send();
+        });
+    </script>
+</body>
+</html>

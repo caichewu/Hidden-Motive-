@@ -1,0 +1,304 @@
+app:
+  description: 剧本杀游戏助手 - 支持剧本创作、线索生成、角色扮演和推理辅助
+  icon: 🎭
+  icon_background: '#6366F1'
+  mode: workflow
+  name: 剧本杀助手
+kind: app
+version: 0.1.3
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: 欢迎使用剧本杀助手！我可以帮你：\n1. 创作剧本（角色、剧情、线索）\n2. 生成游戏内容\n3. 扮演NPC角色\n4. 辅助推理分析\n\n请告诉我你想做什么？
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        sourceType: start
+        targetType: llm
+      id: start-llm-1
+      source: start
+      sourceHandle: source
+      target: llm-1
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: llm
+        targetType: if-else
+      id: llm-1-ifelse-1
+      source: llm-1
+      sourceHandle: source
+      target: ifelse-1
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: if-else
+        targetType: llm
+      id: ifelse-1-llm-2
+      source: ifelse-1
+      sourceHandle: 'true'
+      target: llm-2
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: if-else
+        targetType: llm
+      id: ifelse-1-llm-3
+      source: ifelse-1
+      sourceHandle: 'false'
+      target: llm-3
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: llm
+        targetType: answer
+      id: llm-2-answer-1
+      source: llm-2
+      sourceHandle: source
+      target: answer-1
+      targetHandle: target
+      type: custom
+    - data:
+        sourceType: llm
+        targetType: answer
+      id: llm-3-answer-1
+      source: llm-3
+      sourceHandle: source
+      target: answer-1
+      targetHandle: target
+      type: custom
+    nodes:
+    - data:
+        desc: 工作流开始节点
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: 用户输入
+          max_length: 2000
+          required: true
+          type: text-input
+          variable: user_input
+      height: 90
+      id: start
+      position:
+        x: 80
+        y: 150
+      positionAbsolute:
+        x: 80
+        y: 150
+      selected: false
+      type: start
+      width: 244
+    - data:
+        context:
+          enabled: false
+        desc: 意图识别 - 判断用户想做什么
+        memory:
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: false
+            size: 10
+        model:
+          completion_params:
+            temperature: 0.3
+          mode: chat
+          name: claude-sonnet-4-6
+          provider: anthropic
+        prompt_template:
+        - id: system
+          role: system
+          text: "你是一个意图识别助手。分析用户输入，判断用户想要：\n1. 创作剧本（包括角色设定、剧情设计、线索生成）\n2. 游戏互动（角色扮演、推理辅助、查询信息）\n\n只需回答：创作 或 互动"
+        - id: user
+          role: user
+          text: '{{#start.user_input#}}'
+        selected: false
+        title: 意图识别
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: llm-1
+      position:
+        x: 384
+        y: 150
+      positionAbsolute:
+        x: 384
+        y: 150
+      selected: false
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: condition-1
+            value: 创作
+            variable_selector:
+            - llm-1
+            - text
+          id: 'true'
+          logical_operator: and
+        desc: 判断是创作还是互动
+        logical_operator: and
+        selected: false
+        title: 功能分流
+      height: 126
+      id: ifelse-1
+      position:
+        x: 688
+        y: 150
+      positionAbsolute:
+        x: 688
+        y: 150
+      selected: false
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+        desc: 剧本创作模式
+        memory:
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 10
+        model:
+          completion_params:
+            temperature: 0.8
+          mode: chat
+          name: claude-sonnet-4-6
+          provider: anthropic
+        prompt_template:
+        - id: system
+          role: system
+          text: |
+            你是专业的剧本杀编剧。帮助用户创作高质量剧本内容。
+
+            创作要素：
+            1. 角色设定：姓名、年龄、职业、性格、秘密、动机
+            2. 剧情框架：时间线、事件、冲突、转折
+            3. 线索设计：物证、证词、时间线、逻辑链
+            4. 真相设定：凶手、手法、动机、完整推理链
+
+            输出格式要求：
+            - 结构清晰，分段明确
+            - 线索要有层次（表面/深层）
+            - 逻辑自洽，无矛盾
+            - 适度留白，增加推理空间
+        - id: user
+          role: user
+          text: '{{#start.user_input#}}'
+        selected: false
+        title: 剧本创作
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: llm-2
+      position:
+        x: 992
+        y: 80
+      positionAbsolute:
+        x: 992
+        y: 80
+      selected: false
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+        desc: 游戏互动模式
+        memory:
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 20
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: claude-sonnet-4-6
+          provider: anthropic
+        prompt_template:
+        - id: system
+          role: system
+          text: |
+            你是剧本杀游戏主持人/NPC角色。根据用户需求提供互动服务：
+
+            1. 角色扮演：
+               - 保持角色人设一致
+               - 根据剧本设定回答
+               - 适度隐藏秘密信息
+
+            2. 推理辅助：
+               - 整理已知线索
+               - 分析时间线矛盾
+               - 提示推理方向（不直接给答案）
+
+            3. 信息查询：
+               - 回顾剧情
+               - 确认线索
+               - 解释规则
+
+            保持神秘感，不要直接透露答案。
+        - id: user
+          role: user
+          text: '{{#start.user_input#}}'
+        selected: false
+        title: 游戏互动
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 98
+      id: llm-3
+      position:
+        x: 992
+        y: 260
+      positionAbsolute:
+        x: 992
+        y: 260
+      selected: false
+      type: custom
+      width: 244
+    - data:
+        answer: '{{#llm-2.text#}}{{#llm-3.text#}}'
+        desc: 输出最终结果
+        selected: false
+        title: 输出结果
+        type: answer
+        variables: []
+      height: 107
+      id: answer-1
+      position:
+        x: 1296
+        y: 150
+      positionAbsolute:
+        x: 1296
+        y: 150
+      selected: false
+      type: custom
+      width: 244

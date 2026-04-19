@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>疑云 - AI剧本杀</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            height: 100vh;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            padding: 15px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .header h1 { 
+            font-size: 20px; 
+            margin-bottom: 8px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .auto-deduction-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            padding: 5px 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        .auto-deduction-btn.active {
+            background: #27ae60;
+            border-color: #2ecc71;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+        }
+        .script-select {
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 5px 30px 5px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+        .script-select option {
+            background: #1a1a2e;
+            color: #fff;
+        }
+        .current-script {
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.user { justify-content: flex-end; }
+        .avatar {
+            width: 35px;
+            height: 35px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .message-content {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            line-height: 1.5;
+            position: relative;
+        }
+        .message.ai .message-content {
+            background: rgba(255,255,255,0.1);
+            border-top-left-radius: 4px;
+        }
+        .message.user .message-content {
+            background: #4a90d9;
+            border-top-right-radius: 4px;
+        }
+        .character-name {
+            font-size: 11px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 4px;
+        }
+        .input-area {
+            padding: 15px 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 10px;
+        }
+        .input-area input {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 25px;
+        }
+        .input-area button {
+            background: #4a90d9;
+            border: none;
+            color: #fff;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        .loading {
+            text-align: center;
+            color: #888;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 疑云 - AI剧本杀</h1>
+            <div class="controls">
+                <select class="script-select" id="scriptSelect">
+                    <option value="疑云">🏔️ 疑云（别墅）</option>
+                    <option value="消失的乘客">🚂 消失的乘客（列车）</option>
+                    <option value="直播间">📱 直播间（网红）</option>
+                </select>
+                <button class="auto-deduction-btn" id="autoDeductionBtn">自动推演：关</button>
+            </div>
+            <div class="current-script" id="currentScript">当前剧本：疑云</div>
+        </div>
+        
+        <div class="chat-area" id="chatArea">
+            <div class="message ai">
+                <div class="avatar">🤖</div>
+                <div class="message-content">
+                    <div class="character-name">系统</div>
+                    欢迎来到《疑云》。输入"问[角色名]：[问题]"开始调查！<br><br>
+                    例如：问林医生：你昨晚在哪里？
+                </div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="输入你的问题...">
+            <button id="sendBtn">发送</button>
+        </div>
+    </div>
+
+    <script>
+        // Dify API 配置 - GitHub Pages 部署时会通过 GitHub Actions 替换此占位符
+        const DIFY_API_KEY = 'DIFY_API_KEY_PLACEHOLDER'; 
+        const DIFY_API_URL = 'https://api.dify.ai/v1/workflows/run';
+        
+        // 角色定义
+        const CHARACTERS = {
+            "林医生": { "avatar": "👨‍⚕️", "color": "#2c3e50" },
+            "苏记者": { "avatar": "👩‍💼", "color": "#8e44ad" },
+            "陈厨师": { "avatar": "👨‍🍳", "color": "#d35400" }
+        };
+
+        // 场景控制器 - 移植自原 Python 后端
+        class SceneController {
+            constructor() {
+                this.lastSpeaker = null;
+                this.willingness = { "林医生": 50, "苏记者": 50, "陈厨师": 50 };
+            }
+
+            calculateWillingness(lastMessage) {
+                // 1. 冷场基础增加
+                for (let name in this.willingness) {
+                    this.willingness[name] += 30;
+                }
+                
+                if (!lastMessage) return;
+
+                // 2. 被点名逻辑
+                for (let name in CHARACTERS) {
+                    if (lastMessage.includes(name)) {
+                        this.willingness[name] += 40;
+                    }
+                }
+
+                // 3. 秘密被接近逻辑
+                const secretKeywords = ["真相", "凶手", "证据", "昨晚", "秘密"];
+                if (secretKeywords.some(kw => lastMessage.includes(kw))) {
+                    const names = Object.keys(CHARACTERS);
+                    const target = names[Math.floor(Math.random() * names.length)];
+                    this.willingness[target] += 50;
+                }
+
+                // 4. 刚说完话的人意愿清零
+                if (this.lastSpeaker && this.willingness[this.lastSpeaker]) {
+                    this.willingness[this.lastSpeaker] = 10;
+                }
+            }
+
+            getNextSpeaker() {
+                const entries = Object.entries(this.willingness);
+                const sorted = entries.sort((a, b) => b[1] - a[1]);
+                const topScore = sorted[0][1];
+                
+                // 增加随机性
+                const candidates = sorted
+                    .filter(item => item[1] >= topScore - 10)
+                    .map(item => item[0]);
+                
+                const nextSpeaker = candidates[Math.floor(Math.random() * candidates.length)];
+                this.lastSpeaker = nextSpeaker;
+                return nextSpeaker;
+            }
+        }
+
+        const sceneController = new SceneController();
+        let conversationId = '';
+        let round = 1;
+        let currentScript = '疑云';
+        let isAutoDeduction = false;
+        let lastMessageContent = '';
+        let clues = { "list": [], "suspects": {}, "timeline": [] }; // 线索追踪
+        
+        // 获取DOM元素
+        const scriptSelect = document.getElementById('scriptSelect');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatArea = document.getElementById('chatArea');
+        const currentScriptDiv = document.getElementById('currentScript');
+        const autoDeductionBtn = document.getElementById('autoDeductionBtn');
+        
+        // 自动推演开关
+        autoDeductionBtn.addEventListener('click', () => {
+            isAutoDeduction = !isAutoDeduction;
+            autoDeductionBtn.classList.toggle('active', isAutoDeduction);
+            autoDeductionBtn.textContent = `自动推演：${isAutoDeduction ? '开' : '关'}`;
+            
+            if (isAutoDeduction) {
+                autoDeduce();
+            }
+        });
+
+        // 自动推演逻辑
+        async function autoDeduce() {
+            if (!isAutoDeduction) return;
+            
+            try {
+                // 获取下一个发言人
+                sceneController.calculateWillingness(lastMessageContent);
+                const nextSpeaker = sceneController.getNextSpeaker();
+                
+                // 让该发言人说话
+                await sendMessage(null, nextSpeaker);
+                
+                // 延迟后继续
+                if (isAutoDeduction) {
+                    setTimeout(autoDeduce, 3500);
+                }
+            } catch (error) {
+                console.error('自动推演失败:', error);
+                isAutoDeduction = false;
+                autoDeductionBtn.classList.remove('active');
+                autoDeductionBtn.textContent = '自动推演：关';
+            }
+        }
+
+        // 剧本切换
+        scriptSelect.addEventListener('change', function() {
+            const newScript = this.value;
+            if (newScript === currentScript) return;
+            
+            currentScript = newScript;
+            currentScriptDiv.textContent = '当前剧本：' + currentScript;
+            chatArea.innerHTML = '';
+            conversationId = '';
+            round = 1;
+            lastMessageContent = '';
+            clues = { "list": [], "suspects": {}, "timeline": [] };
+            
+            appendMessage('系统', '🤖', '#888', `已切换至《${currentScript}》`, 'ai');
+            
+            const intros = {
+                '疑云': '欢迎来到《疑云》。暴风雨夜，山顶别墅，富商赵总身亡。嫌疑人：林医生、苏记者、陈厨师。',
+                '消失的乘客': '欢迎来到《消失的乘客》。平安夜，G1234次列车，富商李先生中毒身亡。嫌疑人：林医生、苏记者、陈厨师。',
+                '直播间': '欢迎来到《直播间》。网红主播小美直播时离奇死亡。嫌疑人：林医生、苏记者、陈厨师。'
+            };
+            
+            setTimeout(() => {
+                appendMessage('系统', '🤖', '#888', `${intros[currentScript]}<br><br>输入"问[角色名]：[问题]"开始调查！`, 'ai');
+            }, 300);
+        });
+        
+        function appendMessage(name, avatar, color, content, type) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${type}`;
+            
+            if (type === 'ai') {
+                msgDiv.innerHTML = `
+                    <div class="avatar">${avatar}</div>
+                    <div class="message-content" style="border-left: 4px solid ${color}">
+                        <div class="character-name" style="color: ${color}">${name}</div>
+                        ${content.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+            } else {
+                msgDiv.innerHTML = `
+                    <div class="message-content">
+                        ${content}
+                    </div>
+                    <div class="avatar">👤</div>
+                `;
+            }
+            
+            chatArea.appendChild(msgDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            lastMessageContent = content;
+        }
+
+        // 发送消息 - 直接调用 Dify API
+        async function sendMessage(manualQuery = null, specifiedSpeaker = null) {
+            const query = manualQuery || userInput.value.trim();
+            if (!query && !specifiedSpeaker) return;
+            
+            // 确定当前发言人
+            let currentSpeaker = specifiedSpeaker;
+            if (!currentSpeaker) {
+                // 尝试从 query 中提取被提问的角色
+                for (let name in CHARACTERS) {
+                    if (query.includes(name)) {
+                        currentSpeaker = name;
+                        break;
+                    }
+                }
+                // 如果没提取到，由控制器选一个
+                if (!currentSpeaker) {
+                    sceneController.calculateWillingness(query);
+                    currentSpeaker = sceneController.getNextSpeaker();
+                }
+            }
+
+            if (manualQuery === null && !specifiedSpeaker) {
+                appendMessage('你', '👤', '#4a90d9', query, 'user');
+                userInput.value = '';
+            }
+            
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.textContent = `${currentSpeaker}正在思考...`;
+            chatArea.appendChild(loadingDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            
+            try {
+                // 构造 Dify 工作流请求格式
+                const payload = {
+                    "inputs": {
+                        "query": query || "请继续你的表演",
+                        "current_speaker": currentSpeaker,
+                        "script_name": currentScript,
+                        "clues": clues
+                    },
+                    "response_mode": "blocking",
+                    "user": "player-001"
+                };
+
+                const response = await fetch(DIFY_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${DIFY_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const resData = await response.json();
+                loadingDiv.remove();
+                
+                // 处理 Workflow 返回的结构
+                let answer = "";
+                if (resData.data && resData.data.outputs) {
+                    const outputs = resData.data.outputs;
+                    answer = outputs.text || outputs.answer || outputs.output || "Workflow 执行成功，但未找到输出文本。";
+                } else if (resData.error) {
+                    answer = `API 错误: ${resData.error}`;
+                } else {
+                    answer = "未收到有效回复，请检查 Workflow 配置。";
+                }
+                
+                if (answer) {
+                    const charInfo = CHARACTERS[currentSpeaker] || { avatar: '🤖', color: '#fff' };
+                    appendMessage(currentSpeaker, charInfo.avatar, charInfo.color, answer, 'ai');
+                    round++;
+                }
+                
+            } catch (error) {
+                loadingDiv.remove();
+                appendMessage('系统', '❌', '#e74c3c', `出错了：${error.message}`, 'ai');
+            }
+        }
+        
+        sendBtn.addEventListener('click', () => sendMessage());
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
